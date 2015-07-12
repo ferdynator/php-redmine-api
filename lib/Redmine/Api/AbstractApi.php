@@ -128,12 +128,9 @@ abstract class AbstractApi
      */
     protected function retrieveAll($endpoint, array $params = array())
     {
-        if (empty($params)) {
-            return $this->get($endpoint);
-        }
         $defaults = array(
-            'limit' => 25,
-            'offset' => 0,
+	    'limit' => 100,
+	    'offset' => 0,
         );
         $params = $this->sanitizeParams($defaults, $params);
 
@@ -141,30 +138,20 @@ abstract class AbstractApi
 
         $limit = $params['limit'];
         $offset = $params['offset'];
+        $totalCount = 101;
 
-        while ($limit > 0) {
-            if ($limit > 100) {
-                $_limit = 100;
-                $limit -= 100;
-            } else {
-                $_limit = $limit;
-                $limit = 0;
-            }
-            $params['limit'] = $_limit;
-            $params['offset'] = $offset;
+        while ($offset < $totalCount) {
 
-            $newDataSet = (array) $this->get($endpoint.'?'.http_build_query($params));
+	    $newDataSet = (array) $this->get($endpoint.'?'.http_build_query($params));
             $ret = array_merge_recursive($ret, $newDataSet);
 
-            $offset += $_limit;
-            if (empty($newDataSet) || !isset($newDataSet['limit']) || (
-                    isset($newDataSet['offset']) &&
-                    isset($newDataSet['total_count']) &&
-                    $newDataSet['offset'] >= $newDataSet['total_count']
-                )
-            ) {
-                $limit = 0;
-            }
+    	    if (empty($newDataSet) || !isset($newDataSet['limit']) || !isset($newDataSet['total_count'])) {
+	        $totalCount = 0;
+            } else {
+    	        $totalCount = $newDataSet['total_count'];
+	        $offset += $limit;
+	        $params['offset'] = $offset;
+	    }
         }
 
         return $ret;
